@@ -1,14 +1,12 @@
 import os
-import uuid
-import urllib.parse
-import urllib.request
-import ssl
 
 from bottle import Bottle, request, response, redirect, abort
+from requests_oauthlib import OAuth2Session
 
 app = Bottle()
 
-REQUEST_TOKEN_URL = 'https://discordapp.com/api/oauth2/token'
+API_URL = 'https://discordapp.com/api'
+TOKEN_URL = 'https://discordapp.com/api/oauth2/token'
 AUTHORIZE_URL = 'https://discordapp.com/api/oauth2/authorize'
 
 COOKIE_SECRET = os.environ['COOKIE_SECRET']
@@ -18,59 +16,56 @@ REDIRECT_URI = '{}/auth'.format(os.environ['REDIRECT_URI'])
 PORT = int(os.environ.get('PORT', 5000))
 
 
+def token_updater(token):
+    response.set_cookie('oauth2_token', token, secret=COOKIE_SECRET)
+
+
+def make_session(token=None, state=None, scope=None):
+    return OAuth2Session(
+        client_id=OAUTH_CLIENT_ID,
+        token=token,
+        state=state,
+        scope=scope,
+        redirect_uri=REDIRECT_URI,
+        auto_refresh_kwargs={
+            'client_id': OAUTH_CLIENT_ID,
+            'client_secret': OAUTH_CLIENT_SECRET,
+        },
+        auto_refresh_url=TOKEN_URL,
+        token_updater=token_updater)
+
+
 @app.route('/')
 def root():
-    auth_state = uuid.uuid4()
-
-    params = {
-        'client_id': OAUTH_CLIENT_ID,
-        'response_type': 'code',
-        'scope': 'identify guilds',
-        'redirect_uri': REDIRECT_URI,
-        'state': auth_state,
-    }
-
-    redirect_url = '{}?{}'.format(AUTHORIZE_URL,
-                                  urllib.parse.urlencode(
-                                      params, quote_via=urllib.parse.quote))
-
-    response.set_cookie('auth_state', auth_state, secret=COOKIE_SECRET)
-    redirect(redirect_url)
+    scope = ['identify', 'guilds']
+    discord = make_session(scope=scope)
+    auth_url, state = discord.authorization_url(AUTHORIZE_URL)
+    response.set_cookie('oauth2_state', state, secret=COOKIE_SECRET)
+    redirect(auth_url)
 
 
 @app.route('/auth')
 def auth():
-    expected_state = request.get_cookie('auth_state', secret=COOKIE_SECRET)
-    if str(expected_state) != str(request.query.state):
-        abort(401, 'Bad auth state. Clear your cookies and try again.')
-    params = {
-        'client_id': OAUTH_CLIENT_ID,
-        'client_secret': OAUTH_CLIENT_SECRET,
-        'grant_type': 'authorization_code',
-        'redirect_uri': REDIRECT_URI,
-        'code': str(request.query.code),
-    }
-    req = urllib.request.Request(
-        url=REQUEST_TOKEN_URL,
-        headers={'Content-Type': 'application/x-www-form-urlencoded'},
-        data=urllib.parse.urlencode(params).encode('utf-8'))
-    with urllib.request.urlopen(
-            req, context=ssl.create_default_context()) as resp:
-        if resp.get_code() != 200:
-            abort(503, "Unknown response from discord {}".format(
-                resp.get_code()))
-        doc = json.load(resp)
-        for val in range['access_token', 'refresh_token']:
-            response.set_cookie(val, doc[val], secret=COOKIE_SECRET)
+    if request.query.error:
+        abort(401, request.query.error)
+    discord = make_session(
+        state=request.get_cookie('oauth2_state', secret=COOKIE_SECRET))
+    token = discord.fetch_token(
+        TOKEN_URL,
+        client_secret=OAUTH_CLIENT_SECRET,
+        authorization_response=request.url,
+    )
+    response.set_cookie('oauth2_token', token, secret=COOKIE_SECRET)
     redirect('/app')
 
 
 @app.route('/app')
 def app_page():
-    access_token = response.get_cookie('access_token', secret=COOKIE_SECRET)
-    if not access_token:
-        redirect('/')
-    return 'Logged in! Your access token is {}.'.format(access_token)
+    discord = make_session(
+        token=request.get_cookie('oauth2_token', secret=COOKIE_SECRET))
+    user = discord.get(API_URL + '/users/@me').text
+    response.set_header('content-type', 'application/json')
+    return user
 
 
 if __name__ == '__main__':
