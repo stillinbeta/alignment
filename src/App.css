@@ -1,0 +1,21 @@
+.App {
+}
+
+img.dim {
+    filter: brightness(50%);
+}
+
+.guildIcons {
+    list-style: none;
+}
+
+.guildIcons img {
+    border-radius: 50%;
+                       border-width: 1px;
+    border-color: black;
+    border-style: solid;
+}
+
+.guildIcons img.squareround {
+    border-radius: 20%
+}

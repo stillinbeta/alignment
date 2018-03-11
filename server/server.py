@@ -63,7 +63,7 @@ def auth():
 def app_page():
     discord = make_session(
         token=request.get_cookie('oauth2_token', secret=COOKIE_SECRET))
-    user = discord.get(API_URL + '/users/@me').text
+    user = discord.get(API_URL + '/guilds/313032054172549120').text
     response.set_header('content-type', 'application/json')
     return user
 
