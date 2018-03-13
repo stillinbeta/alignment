@@ -19,11 +19,22 @@ class AvatarField extends Component {
         this.setState({avatarSize: newSize});
     }
 
+    // Move whatever avatar has just been moved to the top of the stack
+    onMoveAvatar(av, e, dd) {
+        this.setState((oldState, props) => {
+            var idx = oldState.icons.indexOf(av);
+            oldState.icons.splice(idx, 1);
+            oldState.icons.push(av);
+            return oldState;
+        });
+    }
+
     render() {
         const avatars = this.state.icons.map(
             (avatar) =>
                 <Draggable
             defaultPosition={avatar.position}
+            onStart={this.onMoveAvatar.bind(this, avatar)}
             bounds="parent"
             key={avatar.user.id}
                 >
