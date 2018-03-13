@@ -1,96 +1,132 @@
 import React, { Component } from 'react';
 import './App.css';
-import {me, guilds} from './Data.js';
+import {me, members} from './Data.js';
+import Draggable from 'react-draggable';
 
-
-class DiscordImage extends Component {
+class AvatarField extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            dim: false,
-            hover: false
+            icons: props.icons,
+            avatarSize: props.avatarSize
+
         };
+
+        this.onSizeChange = this.onSizeChange.bind(this);
     }
 
-    handleClick(e) {
-        this.setState((prevstate, props) => ({
-            dim: !prevstate.dim
-        }));
-    }
-
-    handleHover(e) {
-        this.setState({hover: true});
-    }
-
-    handleBlur(e) {
-        this.setState({hover: false});
+    onSizeChange(newSize) {
+        this.setState({avatarSize: newSize});
     }
 
     render() {
+        const avatars = this.state.icons.map(
+            (avatar) =>
+                <Draggable
+            defaultPosition={avatar.position}
+            bounds="parent"
+            key={avatar.user.id}
+                >
+                <UserAvatar user={avatar.user} size={this.state.avatarSize}/>
+                </Draggable>
+        );
         return (
-                <img src={
-                    this.props.baseURL +
-                        this.props.objectID +
-                        "/" +
-                        this.props.imageID +
-                        ".png"}
-            class={(this.state.dim ? "dim" : "") + " " + (this.state.hover ? "squareround" : "")}
-            onClick={this.handleClick.bind(this)}
-            onMouseOver={this.handleHover.bind(this)}
-            onMouseOut={this.handleBlur.bind(this)}
-            alt={this.props.altText}
-                />
+            <div>
+                <SizeSelector value={this.state.avatarSize} min="32" max="128"
+            onSizeChange={this.onSizeChange}/>
+                <div id="avatar-field">
+                {avatars}
+                </div>
+           </div>
         );
     }
 }
 
-class GuildList extends Component {
+class SizeSelector extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            value: props.value
+        };
+        this.onChange = this.onChange.bind(this);
+    }
+
+    onChange(e) {
+        var value = e.target.value;
+        this.setState({value: value});
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (typeof this.props.onSizeChange !== "undefined") {
+            this.props.onSizeChange(value);
+        }
+    }
+
     render() {
-        const guilds = this.props.guilds;
-        const guildIcons = guilds.map(
-            (guild) => <li key={guild.id}><GuildIcon guild={guild} /></li>
-        );
         return (
-                <ul class="guildIcons">{guildIcons}</ul>
+                <input type="range"
+            value={this.state.value}
+            min={this.props.min}
+            max={this.props.max}
+            onChange={this.onChange}/>
         );
     }
 }
 
-class GuildIcon extends Component {
+class AvatarMenu extends Component {
     render() {
         return (
-            <DiscordImage
-            baseURL="https://cdn.discordapp.com/icons/"
-            objectID={this.props.guild.id}
-            imageID={this.props.guild.icon}
-            altText={this.props.guild.name}
-                />
+            <div id="avatar-menu">
+                <UserAvatar user={this.props.user} />
+            </div>
         );
     }
 }
 
 class UserAvatar extends Component {
     render() {
+        const {user, ...others} = this.props;
         return (
                 <DiscordImage
+            {...others}
             baseURL="https://cdn.discordapp.com/avatars/"
-            objectID={this.props.user.id}
-            imageID={this.props.user.avatar}
-            altText={this.props.user.username}
+            objectID={user.id}
+            imageID={user.avatar}
+            altText={user.username}
                 />
         );
     }
+}
 
-
+class DiscordImage extends Component {
+    render() {
+        var {
+            objectID,
+            imageID,
+            baseURL,
+            altText,
+            className,
+            size,
+            ...others
+        } = this.props;
+        const imageSize = Math.pow(2, Math.round(Math.log2(size)));
+        const url = `${baseURL}${objectID}/${imageID}.png?size=${imageSize}`;
+        return (
+                <img {...others}
+            src={url} height={size} width={size}
+            className={className + " icon "}
+            alt={this.props.altText}
+                />
+        );
+    }
 }
 
 class App extends Component {
   render() {
     return (
       <div className="App">
-        <UserAvatar user={me} />
-            <hr />
-        <GuildList guilds={guilds} />
+        <AvatarMenu user={me} />
+        <AvatarField icons={members} avatarSize="64"/>
       </div>
     );
   }

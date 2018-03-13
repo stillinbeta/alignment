@@ -1,21 +1,29 @@
 .App {
 }
 
-img.dim {
-    filter: brightness(50%);
-}
-
-.guildIcons {
-    list-style: none;
-}
-
-.guildIcons img {
-    border-radius: 50%;
-                       border-width: 1px;
-    border-color: black;
-    border-style: solid;
-}
-
-.guildIcons img.squareround {
+img.squareround {
     border-radius: 20%
+}
+
+#avatar-menu {
+    float: right;
+}
+
+#avatar-field {
+    width: 500px;
+    height: 500px;
+    background-color: thistle;
+    position: fixed;
+}
+
+#avatar-field .icon {
+    border-radius: 50%;
+    position: absolute;
+
+    user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
 }
