@@ -4,6 +4,12 @@ import {me, members} from './Data.js';
 import Draggable from 'react-draggable';
 
 class AvatarField extends Component {
+    static defaultProps = {
+        onMoveStart: (av) => {},
+        onMoveEnd: (av) => {},
+        onMove: (av) => {}
+    }
+
     constructor(props) {
         super(props);
         this.state = {
@@ -20,13 +26,28 @@ class AvatarField extends Component {
     }
 
     // Move whatever avatar has just been moved to the top of the stack
-    onMoveAvatar(av, e, dd) {
+    onMoveStart(av, e, dd) {
         this.setState((oldState, props) => {
             var idx = oldState.icons.indexOf(av);
             oldState.icons.splice(idx, 1);
             oldState.icons.push(av);
             return oldState;
         });
+        this.props.onMoveStart(av);
+    }
+
+    onMoveEnd(av, e, dd) {
+        this.props.onMoveEnd(av);
+    }
+
+    onMove(av, e, dd) {
+        this.setState((oldState, props) => {
+            var idx = oldState.icons.indexOf(av);
+            oldState.icons[idx].position = {x: dd.x, y: dd.y};
+            return oldState;
+        });
+        console.log(this.state.icons);
+        this.props.onMove(av);
     }
 
     render() {
@@ -34,7 +55,9 @@ class AvatarField extends Component {
             (avatar) =>
                 <Draggable
             defaultPosition={avatar.position}
-            onStart={this.onMoveAvatar.bind(this, avatar)}
+            onStart={this.onMoveStart.bind(this, avatar)}
+            onDrag={this.onMove.bind(this, avatar)}
+            onEnd={this.onMoveEnd.bind(this, avatar)}
             bounds="parent"
             key={avatar.user.id}
                 >
@@ -54,6 +77,9 @@ class AvatarField extends Component {
 }
 
 class SizeSelector extends Component {
+    static defaultProps = {
+        onSizeChange: (v) => {}
+    }
     constructor(props) {
         super(props);
         this.state = {
@@ -68,9 +94,7 @@ class SizeSelector extends Component {
         e.stopPropagation();
         e.preventDefault();
 
-        if (typeof this.props.onSizeChange !== "undefined") {
-            this.props.onSizeChange(value);
-        }
+        this.props.onSizeChange(value);
     }
 
     render() {
