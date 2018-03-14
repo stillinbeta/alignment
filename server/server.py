@@ -3,16 +3,20 @@ import base64
 import uuid
 from pathlib import Path
 
-from aiohttp import web
+from aiohttp import web, WSMsgType
 from aioauth_client import OAuth2Client
 import aiohttp_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
+
+from structlog import get_logger
 
 COOKIE_SECRET = base64.urlsafe_b64decode(os.environ['COOKIE_SECRET'])
 OAUTH_CLIENT_ID = os.environ['OAUTH_CLIENT_ID']
 OAUTH_CLIENT_SECRET = os.environ['OAUTH_CLIENT_SECRET']
 REDIRECT_URI = '{}/auth'.format(os.environ['REDIRECT_URI'])
 PORT = int(os.environ.get('PORT', 5000))
+
+log = get_logger()
 
 
 def discord_client(**kwargs):
@@ -90,6 +94,20 @@ async def user_info(request):
     _user, userDict = await discord.user_info()
     return web.json_response(userDict)
 
+async def avatar_ws(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
+    async for msg in ws:
+        if msg.type == WSMsgType.TEXT:
+            log.info("received message", msg=msg.data)
+            await ws.send_str('got your message!')
+        elif msg.type == WSMsgType.ERROR:
+            log.error("websocket error", error=msg.exception())
+
+    log.info('websocket connection closed')
+    return ws
+
 
 def make_app():
     app = web.Application()
@@ -98,6 +116,7 @@ def make_app():
     app.router.add_get('/auth', auth)
     app.router.add_get('/app', app_page)
     app.router.add_get('/discord-user', app_page)
+    app.router.add_get('/ws', avatar_ws)
     app.router.add_static('/static', 'build/static')
 
     return app
@@ -105,4 +124,5 @@ def make_app():
 
 if __name__ == '__main__':
     app = make_app()
+    log.info('starting app', port=PORT)
     web.run_app(app, host='0.0.0.0', port=PORT)

@@ -2,12 +2,14 @@ import React, { Component } from 'react';
 import './App.css';
 import {me, members} from './Data.js';
 import Draggable from 'react-draggable';
+import Sockette from 'sockette';
 
 class AvatarField extends Component {
     static defaultProps = {
         onMoveStart: (av) => {},
         onMoveEnd: (av) => {},
-        onMove: (av) => {}
+        onMove: (av) => {},
+        locked: true
     }
 
     constructor(props) {
@@ -15,7 +17,6 @@ class AvatarField extends Component {
         this.state = {
             icons: props.icons,
             avatarSize: props.avatarSize
-
         };
 
         this.onSizeChange = this.onSizeChange.bind(this);
@@ -59,6 +60,7 @@ class AvatarField extends Component {
             onDrag={this.onMove.bind(this, avatar)}
             onEnd={this.onMoveEnd.bind(this, avatar)}
             bounds="parent"
+            disabled={this.props.locked}
             key={avatar.user.id}
                 >
                 <UserAvatar user={avatar.user} size={this.state.avatarSize}/>
@@ -157,14 +159,72 @@ class DiscordImage extends Component {
 }
 
 class App extends Component {
-  render() {
-    return (
-      <div className="App">
-        <AvatarMenu user={me} />
-        <AvatarField icons={members} avatarSize="64"/>
-      </div>
-    );
-  }
+    constructor(props){
+        super(props);
+
+        this.onMove = this.onMove.bind(this);
+        this.onWSOpen = this.onWSOpen.bind(this);
+        this.onWSClose = this.onWSClose.bind(this);
+        this.onWSError = this.onWSError.bind(this);
+        this.onMessage = this.onMessage.bind(this);
+
+        this.state = {
+            locked: true,
+            sid: this.getSID()
+        };
+    }
+
+    // a random number, sent to the websocket, so we don't get our own
+    // messages reflected back at us. Unique only to this open webpage
+    getSID() {
+        return Math.floor(Math.random() * Math.floor(1000000));
+    }
+
+    componentDidMount() {
+        const ws = new Sockette(`ws://localhost:5000/ws?sid=${this.state.sid}`, {
+            onopen: this.onWSOpen,
+            onerror: this.onWSError,
+            onclose: this.onWSClose,
+            onmessage: this.onMessage
+        });
+        this.setState({ws});
+    }
+
+    onWSOpen(e) {
+        this.setState({locked: false});
+    }
+
+    onWSClose(e) {
+        this.setState({locked: true});
+    }
+
+    onWSError(e) {
+        this.setState({locked: true});
+        console.log(e);
+    }
+
+    onMove(user) {
+        user.sid = this.state.sid;
+        this.state.ws.json(user);
+    }
+
+    onMessage(e) {
+        console.log(e);
+    }
+
+    render() {
+        return (
+            <div className="App">
+                <AvatarMenu user={me} />
+                <AvatarField
+                    icons={members}
+                    avatarSize="64"
+                    onMove={this.onMove}
+                    locked={this.state.locked}
+                />
+            </div>
+        );
+    }
 }
 
 export default App;
