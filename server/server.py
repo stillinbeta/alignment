@@ -2,8 +2,11 @@ import os
 import base64
 import uuid
 from pathlib import Path
+import asyncio
+from collections import namedtuple
 
-from aiohttp import web, WSMsgType
+import aioredis
+from aiohttp import web, WSMsgType, WSCloseCode
 from aioauth_client import OAuth2Client
 import aiohttp_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
@@ -14,10 +17,13 @@ COOKIE_SECRET = base64.urlsafe_b64decode(os.environ['COOKIE_SECRET'])
 OAUTH_CLIENT_ID = os.environ['OAUTH_CLIENT_ID']
 OAUTH_CLIENT_SECRET = os.environ['OAUTH_CLIENT_SECRET']
 REDIRECT_URI = '{}/auth'.format(os.environ['REDIRECT_URI'])
+REDIS_URL = os.environ['REDIS_URL']
 PORT = int(os.environ.get('PORT', 5000))
 
 log = get_logger()
 
+
+WebsocketHandle = namedtuple('WebsocketHandle', ['ws', 'sid'])
 
 def discord_client(**kwargs):
     return DiscordClient(
@@ -95,18 +101,34 @@ async def user_info(request):
     return web.json_response(userDict)
 
 async def avatar_ws(request):
+
+    sid = request.query.get('sid')
+    if sid is None:
+        raise web.HTTPBadRequest('missing SID')
+
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
-    async for msg in ws:
-        if msg.type == WSMsgType.TEXT:
-            log.info("received message", msg=msg.data)
-            await ws.send_str('got your message!')
-        elif msg.type == WSMsgType.ERROR:
-            log.error("websocket error", error=msg.exception())
+    handle = WebsocketHandle(ws, sid)
+
+    request.app['websockets'].append(handle)
+    try:
+        async for msg in ws:
+            if msg.type == WSMsgType.TEXT:
+                log.info("received message", msg=msg.data)
+                await ws.send_str('got your message!')
+            elif msg.type == WSMsgType.ERROR:
+                log.error("websocket error", error=msg.exception())
+    finally:
+        request.app['websockets'].remove(handle)
 
     log.info('websocket connection closed')
     return ws
+
+async def on_shutdown(app):
+    for ws in app['websockets']:
+        await ws.ws.close(code=WSCloseCode.GOING_AWAY, message="server-shutdown")
+
 
 
 def make_app():
@@ -119,8 +141,9 @@ def make_app():
     app.router.add_get('/ws', avatar_ws)
     app.router.add_static('/static', 'build/static')
 
+    app['websockets'] = []
+    app.on_shutdown.append(on_shutdown)
     return app
-
 
 if __name__ == '__main__':
     app = make_app()

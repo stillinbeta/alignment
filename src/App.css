@@ -1,25 +1,88 @@
+body {
+    background-size: 20px 20px;
+    background-image: linear-gradient(to right, deepskyblue 1px, transparent 1px), linear-gradient(to bottom, deepskyblue 1px, transparent 1px);
+}
+
 .App {
+    width: 685px;
+    height: 100%;
+    background: mistyrose;
+    margin: 0 auto 1em auto;
+    padding: 1em;
+    box-shadow: 1em 1em rgba(0, 0, 0, .5);
 }
 
-img.squareround {
-    border-radius: 20%
+nav {
+    background-color: pink;
+    display: flex;
 }
 
-#avatar-menu {
-    float: right;
+nav a {
+    color: white;
+    text-decoration: none;
+    display: block;
+    padding: 1em;
+    background-color: #be7272;
+    cursor: pointer;
+}
+
+nav a:last-child {
+    margin-left: auto;
+}
+
+nav a:hover {
+    background-color: #960A0A;
+}
+
+.upload-form {
+    display: flex;
+    flex: 1;
+    margin: 0 1px;
+}
+
+.upload-form input {
+    flex: 1;
 }
 
 #avatar-field {
-    width: 500px;
-    height: 500px;
-    background-color: thistle;
-    position: fixed;
+    border-width: 1px;
+    border-style: solid;
+    border-color: black;
+}
+
+.size-selector-container {
+    display: flex;
+    margin: 1em;
+}
+
+.size-selector-container .slider-box {
+    flex: 1;
+    margin: 1em;
+}
+
+.size-selector-container input {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.size-selector-container .size-example-small img {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.icon {
+    border-radius: 50%;
+}
+
+#avatar-field {
+    /* needed so bounding box behaves properly */
+    position: relative;
 }
 
 #avatar-field .icon {
-    border-radius: 50%;
     position: absolute;
-
     user-drag: none;
     user-select: none;
     -moz-user-select: none;

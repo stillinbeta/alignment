@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
+import './Slider.css';
 import {me, members} from './Data.js';
 import Draggable from 'react-draggable';
 import Sockette from 'sockette';
@@ -9,7 +10,10 @@ class AvatarField extends Component {
         onMoveStart: (av) => {},
         onMoveEnd: (av) => {},
         onMove: (av) => {},
-        locked: true
+        locked: true,
+        background: "/default-background.png",
+        backgroundHeight: 680,
+        backgroundWidth: 675
     }
 
     constructor(props) {
@@ -55,22 +59,29 @@ class AvatarField extends Component {
         const avatars = this.state.icons.map(
             (avatar) =>
                 <Draggable
-            defaultPosition={avatar.position}
             onStart={this.onMoveStart.bind(this, avatar)}
             onDrag={this.onMove.bind(this, avatar)}
             onEnd={this.onMoveEnd.bind(this, avatar)}
             bounds="parent"
+            defaultPosition={avatar.position}
             disabled={this.props.locked}
             key={avatar.user.id}
                 >
                 <UserAvatar user={avatar.user} size={this.state.avatarSize}/>
                 </Draggable>
         );
+
+        const background = {
+            backgroundImage: `url(${this.props.background})`,
+            height: `${this.props.backgroundHeight}px`,
+            width: `${this.props.backgroundWidth}px`
+        };
+
         return (
             <div>
-                <SizeSelector value={this.state.avatarSize} min="32" max="128"
+                <SizeSelector value={this.state.avatarSize} user={me} min="32" max="128"
             onSizeChange={this.onSizeChange}/>
-                <div id="avatar-field">
+                <div id="avatar-field" style={background}>
                 {avatars}
                 </div>
            </div>
@@ -101,21 +112,99 @@ class SizeSelector extends Component {
 
     render() {
         return (
-                <input type="range"
-            value={this.state.value}
-            min={this.props.min}
-            max={this.props.max}
-            onChange={this.onChange}/>
+            <div className="size-selector-container">
+
+                <div className="size-example-small">
+                    <UserAvatar className="" size={this.props.min} user={this.props.user} />
+                </div>
+                <div className="slider-box">
+                        <input type="range"
+                    value={this.state.value}
+                    min={this.props.min}
+                    max={this.props.max}
+                    onChange={this.onChange}
+                    className="size-selector"
+                        />
+                </div>
+
+                <div className="size-example-large">
+                    <UserAvatar className="size-example-large" size={this.props.max} user={this.props.user} />
+                </div>
+            </div>
+        );
+    }
+}
+
+class BackgroundSelector extends Component {
+    static defaultProps = {
+        value: "",
+        placeHolder: "https://elly.dog",
+        onSubmit: (val) => {}
+    }
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            value: props.value
+        };
+
+        this.onChange = this.onChange.bind(this);
+        this.onSubmit = this.onSubmit.bind(this);
+    }
+
+    onChange(e) {
+        this.setState({value: e.target.value});
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    onSubmit(e) {
+        this.props.onSubmit(this.state.value);
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    render() {
+        return (
+            <div className="upload-form">
+                <input type="text" placeHolder={this.props.placeHolder} onChange={this.onChange}/>
+                <a onClick={this.onSubmit}>Do the thing</a>
+            </div>
         );
     }
 }
 
 class AvatarMenu extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            upload: false
+        };
+
+        this.newImage = this.newImage.bind(this);
+        this.handleImage = this.handleImage.bind(this);
+
+    }
+
+    newImage() {
+        this.setState({upload: true});
+        console.log("new image time");
+    }
+
+    handleImage(imageURL) {
+        this.setState({upload: false});
+        console.log(imageURL);
+    }
+
     render() {
         return (
-            <div id="avatar-menu">
-                <UserAvatar user={this.props.user} />
-            </div>
+            <nav>
+                <a onClick={this.newImage}>New Image</a>
+                { this.state.upload &&
+                  <BackgroundSelector onSubmit={this.handleImage}/>
+                }
+                <a href="/logout">Logout</a>
+            </nav>
         );
     }
 }
