@@ -3,7 +3,8 @@ import base64
 import uuid
 from pathlib import Path
 import asyncio
-from collections import namedtuple
+from collections import namedtuple, defaultdict
+import itertools
 
 import aioredis
 from aiohttp import web, WSMsgType, WSCloseCode
@@ -20,10 +21,14 @@ REDIRECT_URI = '{}/auth'.format(os.environ['REDIRECT_URI'])
 REDIS_URL = os.environ['REDIS_URL']
 PORT = int(os.environ.get('PORT', 5000))
 
+REDIS_POOL_MIN = int(os.environ.get('REDIS_POOL_MIN', 5))
+REDIS_POOL_MAX = int(os.environ.get('REDIS_POOL_MAX', 10))
+REDIS_ROOM_KEY = 'alignment-rooms'
+
 log = get_logger()
 
-
 WebsocketHandle = namedtuple('WebsocketHandle', ['ws', 'sid'])
+
 
 def discord_client(**kwargs):
     return DiscordClient(
@@ -100,35 +105,77 @@ async def user_info(request):
     _user, userDict = await discord.user_info()
     return web.json_response(userDict)
 
-async def avatar_ws(request):
 
+async def avatar_ws(request):
     sid = request.query.get('sid')
     if sid is None:
         raise web.HTTPBadRequest('missing SID')
+
+    room = 'default'
 
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
     handle = WebsocketHandle(ws, sid)
 
-    request.app['websockets'].append(handle)
+    request.app['websockets'][room].append(handle)
     try:
         async for msg in ws:
             if msg.type == WSMsgType.TEXT:
-                log.info("received message", msg=msg.data)
-                await ws.send_str('got your message!')
+                decoded = json.loads(msg.data)
+                decoded.update(sid=sid, room=room)
+                await app['redis_pool'].publish_json(rooms, decoded)
             elif msg.type == WSMsgType.ERROR:
                 log.error("websocket error", error=msg.exception())
     finally:
-        request.app['websockets'].remove(handle)
+        request.app['websockets'][room].remove(handle)
 
     log.info('websocket connection closed')
     return ws
 
-async def on_shutdown(app):
-    for ws in app['websockets']:
-        await ws.ws.close(code=WSCloseCode.GOING_AWAY, message="server-shutdown")
 
+async def close_open_websockets(app):
+    for ws in itertools.chain(app['websockets'].values()):
+        await ws.ws.close(
+            code=WSCloseCode.GOING_AWAY, message="server-shutdown")
+
+
+async def create_redis_pool(app):
+    redis = await aioredis.create_redis_pool(
+        REDIS_URL,
+        minsize=REDIS_POOL_MIN,
+        maxsize=REDIS_POOL_MAX,
+        loop=app.loop)
+    app['redis_pool'] = redis
+
+
+async def send_messages(app):
+    redis = await app['redis_pool'].acquire()
+    try:
+        channel, *_ = await redis.subscribe(REDIS_ROOM_KEY)
+        async for msg in ch.iter(encoding='utf-8', decoder=json.loads):
+            sid = msg.pop('sid', None)
+            room = msg.pop('room', None)
+            if sid is None or room is None:
+                log.error("message missing sid or room", sid=sid, room=room)
+                continue
+            for ws in app[REDIS_ROOM_KEY][room]:
+                if ws.ws.closed or ws.sid == sid:
+                    continue
+                await ws.ws.send_json(msg)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        await redis.unsubscribe(REDIS_ROOM_KEY)
+        app['redis_pool'].release(redis)
+
+
+async def destroy_redis_pool(app):
+    pool = app.get('redis_pool')
+    if pool is None:
+        return
+    pool.close()
+    await pool.wait_closed()
 
 
 def make_app():
@@ -141,9 +188,12 @@ def make_app():
     app.router.add_get('/ws', avatar_ws)
     app.router.add_static('/static', 'build/static')
 
-    app['websockets'] = []
-    app.on_shutdown.append(on_shutdown)
+    app['websockets'] = defaultdict(list)
+    app.on_startup.append(create_redis_pool)
+    app.on_shutdown.append(destroy_redis_pool)
+    app.on_shutdown.append(close_open_websockets)
     return app
+
 
 if __name__ == '__main__':
     app = make_app()
