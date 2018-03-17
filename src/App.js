@@ -201,7 +201,7 @@ class AvatarMenu extends Component {
             <nav>
                 <a onClick={this.newImage}>New Image</a>
                 { this.state.upload &&
-                  <BackgroundSelector onSubmit={this.handleImage}/>
+                  <BackgroundSelector onSubmit={this.handleImage} />
                 }
                 <a href="/logout">Logout</a>
             </nav>
@@ -235,7 +235,7 @@ class DiscordImage extends Component {
             size,
             ...others
         } = this.props;
-        const imageSize = Math.pow(2, Math.round(Math.log2(size)));
+        const imageSize = Math.pow(2, Math.ceil(Math.log2(size)));
         const url = `${baseURL}${objectID}/${imageID}.png?size=${imageSize}`;
         return (
                 <img {...others}

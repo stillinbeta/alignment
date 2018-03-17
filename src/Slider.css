@@ -1,54 +1,54 @@
 /* http://danielstern.ca/range.css/#/ */
-input[type=range].size-selector {
+input[type=range] {
   -webkit-appearance: none;
   width: 100%;
   margin: 8.35px 0;
 }
-input[type=range].size-selector:focus {
+input[type=range]:focus {
   outline: none;
 }
-input[type=range].size-selector::-webkit-slider-runnable-track {
+input[type=range]::-webkit-slider-runnable-track {
   width: 100%;
   height: 13.3px;
   cursor: pointer;
-  box-shadow: 1.4px 1.4px 1.7px #ffb2df, 0px 0px 1.4px #ffccea;
-  background: #ff91d8;
+  box-shadow: 1.4px 1.4px 1.7px #d3b6b6, 0px 0px 1.4px #ddc6c6;
+  background: #960a0a;
   border-radius: 25px;
-  border: 2.3px solid #dbd58f;
+  border: 2.3px solid #be7272;
 }
-input[type=range].size-selector::-webkit-slider-thumb {
-  box-shadow: 4.1px 4.1px 7.2px #27aaff, 0px 0px 4.1px #41b4ff;
-  border: 5px solid #ffcdff;
+input[type=range]::-webkit-slider-thumb {
+  box-shadow: 3.3px 3.3px 3.2px #d3b6b6, 0px 0px 3.3px #ddc6c6;
+  border: 5px solid #be7272;
   height: 30px;
   width: 30px;
   border-radius: 12px;
-  background: #ffff7d;
+  background: #aa3939;
   cursor: pointer;
   -webkit-appearance: none;
   margin-top: -10.65px;
 }
-input[type=range].size-selector:focus::-webkit-slider-runnable-track {
-  background: #ffbfe8;
+input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #bc0d0d;
 }
-input[type=range].size-selector::-moz-range-track {
+input[type=range]::-moz-range-track {
   width: 100%;
   height: 13.3px;
   cursor: pointer;
-  box-shadow: 1.4px 1.4px 1.7px #ffb2df, 0px 0px 1.4px #ffccea;
-  background: #ff91d8;
+  box-shadow: 1.4px 1.4px 1.7px #d3b6b6, 0px 0px 1.4px #ddc6c6;
+  background: #960a0a;
   border-radius: 25px;
-  border: 2.3px solid #dbd58f;
+  border: 2.3px solid #be7272;
 }
-input[type=range].size-selector::-moz-range-thumb {
-  box-shadow: 4.1px 4.1px 7.2px #27aaff, 0px 0px 4.1px #41b4ff;
-  border: 5px solid #ffcdff;
+input[type=range]::-moz-range-thumb {
+  box-shadow: 3.3px 3.3px 3.2px #d3b6b6, 0px 0px 3.3px #ddc6c6;
+  border: 5px solid #be7272;
   height: 30px;
   width: 30px;
   border-radius: 12px;
-  background: #ffff7d;
+  background: #aa3939;
   cursor: pointer;
 }
-input[type=range].size-selector::-ms-track {
+input[type=range]::-ms-track {
   width: 100%;
   height: 13.3px;
   cursor: pointer;
@@ -56,31 +56,31 @@ input[type=range].size-selector::-ms-track {
   border-color: transparent;
   color: transparent;
 }
-input[type=range].size-selector::-ms-fill-lower {
-  background: #ff63c8;
-  border: 2.3px solid #dbd58f;
+input[type=range]::-ms-fill-lower {
+  background: #700707;
+  border: 2.3px solid #be7272;
   border-radius: 50px;
-  box-shadow: 1.4px 1.4px 1.7px #ffb2df, 0px 0px 1.4px #ffccea;
+  box-shadow: 1.4px 1.4px 1.7px #d3b6b6, 0px 0px 1.4px #ddc6c6;
 }
-input[type=range].size-selector::-ms-fill-upper {
-  background: #ff91d8;
-  border: 2.3px solid #dbd58f;
+input[type=range]::-ms-fill-upper {
+  background: #960a0a;
+  border: 2.3px solid #be7272;
   border-radius: 50px;
-  box-shadow: 1.4px 1.4px 1.7px #ffb2df, 0px 0px 1.4px #ffccea;
+  box-shadow: 1.4px 1.4px 1.7px #d3b6b6, 0px 0px 1.4px #ddc6c6;
 }
-input[type=range].size-selector::-ms-thumb {
-  box-shadow: 4.1px 4.1px 7.2px #27aaff, 0px 0px 4.1px #41b4ff;
-  border: 5px solid #ffcdff;
+input[type=range]::-ms-thumb {
+  box-shadow: 3.3px 3.3px 3.2px #d3b6b6, 0px 0px 3.3px #ddc6c6;
+  border: 5px solid #be7272;
   height: 30px;
   width: 30px;
   border-radius: 12px;
-  background: #ffff7d;
+  background: #aa3939;
   cursor: pointer;
   height: 13.3px;
 }
-input[type=range].size-selector:focus::-ms-fill-lower {
-  background: #ff91d8;
+input[type=range]:focus::-ms-fill-lower {
+  background: #960a0a;
 }
-input[type=range].size-selector:focus::-ms-fill-upper {
-  background: #ffbfe8;
+input[type=range]:focus::-ms-fill-upper {
+  background: #bc0d0d;
 }
