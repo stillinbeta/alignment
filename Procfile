@@ -1,1 +1,1 @@
-web: python server/server.py
+web: python -m alignment
