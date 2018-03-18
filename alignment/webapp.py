@@ -1,3 +1,5 @@
+from aiohttp import web
+
 class WebappHandler:
     def __init__(self):
         with open('build/index.html') as idx:
@@ -7,5 +9,5 @@ class WebappHandler:
         app.router.add_get('/app', self.app_page)
         app.router.add_static('/static', 'build/static')
 
-    async def app_page(request):
+    async def app_page(self, request):
         return web.Response(text=self.react_template, content_type='text/html')
