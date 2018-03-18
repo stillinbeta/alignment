@@ -30,6 +30,10 @@ class AvatarField extends Component {
         this.setState({avatarSize: newSize});
     }
 
+    componentWillReceiveProps(nextProps) {
+        this.setState({icons: nextProps.icons});
+    }
+
     // Move whatever avatar has just been moved to the top of the stack
     onMoveStart(av, e, dd) {
         this.setState((oldState, props) => {
@@ -45,30 +49,30 @@ class AvatarField extends Component {
         this.props.onMoveEnd(av);
     }
 
-    onMove(av, e, dd) {
+    onMove(userId, avatar, e, position) {
+        const {x, y} = position;
+        avatar.position = {x, y};
         this.setState((oldState, props) => {
-            var idx = oldState.icons.indexOf(av);
-            oldState.icons[idx].position = {x: dd.x, y: dd.y};
+            oldState.icons.userId = avatar;
             return oldState;
         });
-        console.log(this.state.icons);
-        this.props.onMove(av);
+        this.props.onMove(avatar);
     }
 
     render() {
-        const avatars = this.state.icons.map(
-            (avatar) =>
-                <Draggable
-            onStart={this.onMoveStart.bind(this, avatar)}
-            onDrag={this.onMove.bind(this, avatar)}
-            onEnd={this.onMoveEnd.bind(this, avatar)}
+        const avatars = Object.keys(this.state.icons).map(
+            (userId) => {
+                const avatar = this.state.icons[userId];
+                return <Draggable
+                onDrag={this.onMove.bind(this, userId, avatar)}
             bounds="parent"
-            defaultPosition={avatar.position}
+            position={avatar.position}
             disabled={this.props.locked}
             key={avatar.user.id}
                 >
                 <UserAvatar user={avatar.user} size={this.state.avatarSize}/>
-                </Draggable>
+                    </Draggable>;
+            }
         );
 
         const background = {
@@ -248,6 +252,10 @@ class DiscordImage extends Component {
 }
 
 class App extends Component {
+    static defaultProps = {
+       members: members
+    }
+
     constructor(props){
         super(props);
 
@@ -257,7 +265,15 @@ class App extends Component {
         this.onWSError = this.onWSError.bind(this);
         this.onMessage = this.onMessage.bind(this);
 
+        const memberMap = props.members.reduce((acc, cur, i) => {
+           acc[cur.user.id] = cur;
+           return acc;
+        }, {});
+
+        console.log(memberMap);
+
         this.state = {
+            members: memberMap,
             locked: true,
             sid: this.getSID()
         };
@@ -293,12 +309,16 @@ class App extends Component {
     }
 
     onMove(user) {
-        user.sid = this.state.sid;
         this.state.ws.json(user);
     }
 
     onMessage(e) {
-        console.log(e);
+        const updated = JSON.parse(e.data);
+        console.log(updated);
+        this.setState((oldState, props) => {
+            oldState.members[updated.user.id] = updated;
+            return oldState;
+        });
     }
 
     render() {
@@ -306,7 +326,7 @@ class App extends Component {
             <div className="App">
                 <AvatarMenu user={me} />
                 <AvatarField
-                    icons={members}
+                    icons={this.state.members}
                     avatarSize="64"
                     onMove={this.onMove}
                     locked={this.state.locked}
