@@ -1,0 +1,22 @@
+.size-selector-container {
+    display: flex;
+    margin: 1em;
+}
+
+.size-selector-container .slider-box {
+    flex: 1;
+    margin: 1em;
+}
+
+.size-selector-container input {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.size-selector-container .size-example-small img {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}

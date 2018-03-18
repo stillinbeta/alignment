@@ -1,0 +1,20 @@
+#avatar-field {
+    border-width: 1px;
+    border-style: solid;
+    border-color: black;
+}
+
+#avatar-field {
+    /* needed so bounding box behaves properly */
+    position: relative;
+}
+
+#avatar-field .icon {
+    position: absolute;
+    user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}

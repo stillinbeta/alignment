@@ -1,0 +1,9 @@
+.upload-form {
+    display: flex;
+    flex: 1;
+    margin: 0 1px;
+}
+
+.upload-form input {
+    flex: 1;
+}
