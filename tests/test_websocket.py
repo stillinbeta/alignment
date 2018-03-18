@@ -1,4 +1,5 @@
 import unittest
+import uuid
 
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiohttp import web
@@ -23,7 +24,8 @@ class WebsocketTest(AioHTTPTestCase):
 
     async def get_application(self):
         app = web.Application()
-        websocket = WebsocketHandler(redis_url='redis://localhost')
+        websocket = WebsocketHandler(
+            redis_url='redis://localhost', redis_channel_key=str(uuid.uuid4()))
         websocket.setup(app)
         return app
 
