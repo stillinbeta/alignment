@@ -16,7 +16,8 @@ class DiscordUserHandler:
                  oauth_client_id,
                  oauth_client_secret,
                  redirect_uri,
-                 landing='/app'):
+                 landing='/app',
+    ):
         self.cookie_secret = cookie_secret
         self.oauth_client_id = oauth_client_id
         self.oauth_client_secret = oauth_client_secret
@@ -61,7 +62,7 @@ class DiscordUserHandler:
         token, _resp = await discord.get_access_token(
             request.query.get('code'))
         session[self.ACCESS_TOKEN_KEY] = token
-        raise web.HTTPFound('/app')
+        raise web.HTTPFound(self.landing)
 
     async def user_info(self, request):
         session = await aiohttp_session.get_session(request)
