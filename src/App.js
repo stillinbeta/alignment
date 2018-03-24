@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import {OrderedMap, Map} from 'immutable';
 import './App.css';
 import {me, members} from './Data.js';
 import AvatarField from './containers/AvatarField.js';
@@ -22,11 +23,8 @@ class App extends Component {
         this.onMessage = this.onMessage.bind(this);
 
         const memberMap = props.members.reduce((acc, cur, i) => {
-            acc.set(cur.user.id, cur);
-           return acc;
-        }, new Map());
-
-        console.log(memberMap);
+            return acc.set(cur.user.id, Map(cur));
+        }, OrderedMap());
 
         this.state = {
             members: memberMap,
@@ -65,23 +63,21 @@ class App extends Component {
     }
 
     onMoveStart(userId) {
-        this.setState((oldState, props) => {
-            // Move to start
-            const user = oldState.members.get(userId);
-            oldState.members.set(userId, user);
-            return oldState;
-        });
+        // this.setState((oldState, props) => {
+        //     // Move to start
+        //     const user = oldState.members.get(userId);
+        //     oldState.members.set(userId, user);
+        //     return oldState;
+        // });
 
     }
 
     onMove(userId, position) {
-        console.log(position);
         this.setState((oldState, props) =>{
-            const user = oldState.members.get(userId);
-            oldState.members.delete(userId);
-            newUser = {...user, position: position};
-            oldState.members.set(userId);
-            oldState.ws.json(user);
+            const members = oldState.members;
+            var user = members.get(userId).set('position', position);
+            oldState.members = members.set(userId, user);
+            this.state.ws.json(user.toJSON());
             return oldState;
         });
     }
@@ -90,7 +86,7 @@ class App extends Component {
         const updated = JSON.parse(e.data);
         console.log(updated);
         this.setState((oldState, props) => {
-            oldState.members.set(updated.user.id, updated);
+            oldState.members = oldState.members.set(updated.user.id, Map(updated));
             return oldState;
         });
     }

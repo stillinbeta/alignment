@@ -4,6 +4,8 @@ import UserAvatar from '../components/UserAvatar.js';
 import SizeSelector from '../components/SizeSelector.js';
 import Draggable from 'react-draggable';
 
+import './AvatarField.css';
+
 class AvatarField extends Component {
     static defaultProps = {
         onMoveStart: (av) => {},
@@ -39,18 +41,21 @@ class AvatarField extends Component {
     }
 
     render() {
-        const avatars = Array.from(this.props.icons.entries()).map(
-            ([userId, avatar]) =>
-                <Draggable
-            onDrag={this.onMove.bind(this, userId, avatar)}
-            bounds="parent"
-            position={avatar.position}
-            disabled={this.props.locked}
-            key={userId}
-                >
-                    <UserAvatar user={avatar.user} size={this.state.avatarSize}/>
-                </Draggable>
-        );
+        var avatars = [];
+        for (var [userId, avatar] of this.props.icons) {
+            avatars.push(
+                    <Draggable
+                onDrag={this.onMove.bind(this, avatar.get('user').id)}
+                bounds="parent"
+                position={avatar.get('position')}
+                disabled={this.props.locked}
+                key={userId}
+                    >
+                    <UserAvatar user={avatar.get('user')} size={this.state.avatarSize}/>
+                    </Draggable>
+
+            );
+        }
 
         const background = {
             backgroundImage: `url(${this.props.background})`,
