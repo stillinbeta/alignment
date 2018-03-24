@@ -16,11 +16,11 @@ class App extends Component {
         super(props);
 
         this.onMove = this.onMove.bind(this);
-        this.onMoveStart = this.onMoveStart.bind(this);
         this.onWSOpen = this.onWSOpen.bind(this);
         this.onWSClose = this.onWSClose.bind(this);
         this.onWSError = this.onWSError.bind(this);
         this.onMessage = this.onMessage.bind(this);
+        this.updatePosition = this.updatePosition.bind(this);
 
         const memberMap = props.members.reduce((acc, cur, i) => {
             return acc.set(cur.user.id, Map(cur));
@@ -62,33 +62,26 @@ class App extends Component {
         console.log(e);
     }
 
-    onMoveStart(userId) {
-        // this.setState((oldState, props) => {
-        //     // Move to start
-        //     const user = oldState.members.get(userId);
-        //     oldState.members.set(userId, user);
-        //     return oldState;
-        // });
+    updatePosition(userID, position) {
+        this.setState((oldState, props) => {
+            oldState.members = oldState.members.withMutations((map) => {
+                const user = map.get(userID);
+                map.delete(userID);
+                map.set(userID, user.set('position', position));
+            });
+            return oldState;
+        });
 
     }
 
-    onMove(userId, position) {
-        this.setState((oldState, props) =>{
-            const members = oldState.members;
-            var user = members.get(userId).set('position', position);
-            oldState.members = members.set(userId, user);
-            this.state.ws.json(user.toJSON());
-            return oldState;
-        });
+    onMove(userID, position) {
+        this.updatePosition(userID, position);
+        this.state.ws.json({userID, position});
     }
 
     onMessage(e) {
-        const updated = JSON.parse(e.data);
-        console.log(updated);
-        this.setState((oldState, props) => {
-            oldState.members = oldState.members.set(updated.user.id, Map(updated));
-            return oldState;
-        });
+        const {userID, position} = JSON.parse(e.data);
+        this.updatePosition(userID, position);
     }
 
     render() {
