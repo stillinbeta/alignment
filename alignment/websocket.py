@@ -3,9 +3,10 @@ import itertools
 from collections import namedtuple, defaultdict
 
 import asyncio
-import aioredis
 from aiohttp import web, WSMsgType, WSCloseCode
 from structlog import get_logger
+
+from alignment.redis import REDIS_POOL_KEY
 
 log = get_logger()
 
@@ -13,46 +14,20 @@ WebsocketHandle = namedtuple('WebsocketHandle', ['ws', 'sid'])
 
 
 class WebsocketHandler:
-    REDIS_POOL_KEY = 'redis_pool'
     WEBSOCKET_KEY = 'websockets'
     LISTENER_KEY = 'redis-listener'
 
-    def __init__(self,
-                 redis_url,
-                 redis_pool_min=5,
-                 redis_pool_max=10,
-                 redis_channel_key='alignment_rooms'):
-        self.redis_url = redis_url
-        self.redis_pool_min = redis_pool_min
-        self.redis_pool_max = redis_pool_max
-        self.redis_channel_key = redis_channel_key
+    def __init__(self, pubsub_key='alignment_rooms'):
+        self.pubsub_key = pubsub_key
 
     def setup(self, app):
         app[self.WEBSOCKET_KEY] = defaultdict(list)
         app.router.add_get('/ws', self.handle_ws)
 
-        app.on_startup.append(self.create_redis_pool)
         app.on_startup.append(self.start_send_messages)
         app.on_shutdown.append(self.close_open_websockets)
         app.on_shutdown.append(self.shutdown_send_messages)
-        app.on_cleanup.append(self.destroy_redis_pool)
 
-    async def create_redis_pool(self, app):
-        """Initialise a new redis pool using the parameters passed to the class"""
-        redis = await aioredis.create_redis_pool(
-            self.redis_url,
-            minsize=self.redis_pool_min,
-            maxsize=self.redis_pool_max,
-            loop=app.loop)
-        app[self.REDIS_POOL_KEY] = redis
-
-    async def destroy_redis_pool(self, app):
-        """Destroy this class's redis pool"""
-        pool = app.get(self.REDIS_POOL_KEY)
-        if pool is None:
-            return
-        pool.close()
-        await pool.wait_closed()
 
     async def start_send_messages(self, app):
         app[self.LISTENER_KEY] = app.loop.create_task(self.send_messages(app))
@@ -63,13 +38,13 @@ class WebsocketHandler:
 
     async def send_messages(self, app):
         """
-        Listen on the Redis channel specified in :redis_channel_key: for messages.
+        Listen on the Redis channel specified in :pubsub_key: for messages.
         When they're received, fan them out to all websockets in that room except the websocket that
         the message originated from (identified by SID)
         """
-        redis = await app['redis_pool']
+        redis = await app[REDIS_POOL_KEY]
         try:
-            channel, *_ = await redis.subscribe(self.redis_channel_key)
+            channel, *_ = await redis.subscribe(self.pubsub_key)
             async for msg in channel.iter(
                     encoding='utf-8', decoder=json.loads):
                 sid = msg.pop('sid', None)
@@ -85,7 +60,7 @@ class WebsocketHandler:
         except asyncio.CancelledError:
             pass
         finally:
-            await redis.unsubscribe(self.redis_channel_key)
+            await redis.unsubscribe(self.pubsub_key)
 
     async def close_open_websockets(self, app):
         """
@@ -118,8 +93,8 @@ class WebsocketHandler:
                 if msg.type == WSMsgType.TEXT:
                     decoded = json.loads(msg.data)
                     decoded.update(sid=sid, room=room)
-                    await request.app[self.REDIS_POOL_KEY].publish_json(
-                        self.redis_channel_key, decoded)
+                    await request.app[REDIS_POOL_KEY].publish_json(
+                        self.pubsub_key, decoded)
                 elif msg.type == WSMsgType.ERROR:
                     log.error("websocket error", error=msg.exception())
         finally:

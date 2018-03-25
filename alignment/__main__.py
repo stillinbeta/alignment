@@ -7,6 +7,7 @@ from structlog import get_logger
 from alignment.discord_user import DiscordUserHandler
 from alignment.websocket import WebsocketHandler
 from alignment.webapp import WebappHandler
+from alignment.redis import RedisPool
 
 log = get_logger()
 
@@ -21,21 +22,23 @@ REDIS_POOL_MIN = int(os.environ.get('REDIS_POOL_MIN', 5))
 REDIS_POOL_MAX = int(os.environ.get('REDIS_POOL_MAX', 10))
 
 if __name__ == '__main__':
-    discordUser = DiscordUserHandler(
+    discord_user = DiscordUserHandler(
         cookie_secret=COOKIE_SECRET,
         oauth_client_id=OAUTH_CLIENT_ID,
         oauth_client_secret=OAUTH_CLIENT_SECRET,
         redirect_uri=REDIRECT_URI,
     )
-    websocket = WebsocketHandler(
+    redis_pool = RedisPool(
         redis_url=REDIS_URL,
         redis_pool_min=REDIS_POOL_MIN,
-        redis_pool_max=REDIS_POOL_MAX,
-    )
+        redis_pool_max=REDIS_POOL_MAX)
+
+    websocket = WebsocketHandler()
     webapp = WebappHandler()
 
     app = web.Application()
-    discordUser.setup(app)
+    redis_pool.setup(app)
+    discord_user.setup(app)
     websocket.setup(app)
     webapp.setup(app)
 
