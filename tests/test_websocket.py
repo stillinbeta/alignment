@@ -4,6 +4,7 @@ import uuid
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiohttp import web
 
+
 from alignment.websocket import WebsocketHandler
 
 
@@ -24,8 +25,9 @@ class WebsocketTest(AioHTTPTestCase):
 
     async def get_application(self):
         app = web.Application()
-        websocket = WebsocketHandler(
-            redis_url='redis://localhost', redis_channel_key=str(uuid.uuid4()))
+        redis = RedisPool(redis_url='redis://localhost')
+        websocket = WebsocketHandler()
+        redis.setup(app)
         websocket.setup(app)
         return app
 
@@ -44,7 +46,7 @@ class WebsocketTest(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_send_websocket_send_recieves(self):
-        async with self.client.session.ws_connect(self.ws()) as ws1:
+        async with self.client.sessionelfws_connect(self.ws()) as ws1:
             async with self.client.session.ws_connect(self.ws(2)) as ws2:
                 await ws1.send_json(self.example_data)
                 recieved = await ws2.receive_json(timeout=5)
