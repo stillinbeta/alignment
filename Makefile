@@ -1,4 +1,4 @@
 test:
-	python -m unittest tests/*.py
+	PYTHONPATH='./tests' python -m unittest tests/*.py
 
 .PHONY: test

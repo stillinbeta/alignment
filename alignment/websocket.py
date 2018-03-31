@@ -1,6 +1,7 @@
 import json
 import itertools
 from collections import namedtuple, defaultdict
+import logging
 
 import asyncio
 from aiohttp import web, WSMsgType, WSCloseCode
@@ -100,5 +101,4 @@ class WebsocketHandler:
         finally:
             request.app[self.WEBSOCKET_KEY][room].remove(handle)
 
-        log.info('websocket connection closed')
         return ws

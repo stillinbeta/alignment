@@ -5,6 +5,7 @@ from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiohttp import web
 
 
+from alignment.redis import RedisPool
 from alignment.websocket import WebsocketHandler
 
 
