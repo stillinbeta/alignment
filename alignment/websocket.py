@@ -22,7 +22,7 @@ class WebsocketHandler:
 
     def setup(self, app):
         app[self.WEBSOCKET_KEY] = defaultdict(list)
-        app.router.add_get('/ws', self.handle_ws)
+        app.router.add_get('/ws', self.handle_ws, name='ws')
 
         app.on_startup.append(self.start_send_messages)
         app.on_shutdown.append(self.close_open_websockets)
@@ -80,7 +80,7 @@ class WebsocketHandler:
         if sid is None:
             raise web.HTTPBadRequest(text='missing sid parameter')
 
-        room = 'default'
+        room = request.query.get('room', 'default')
 
         ws = web.WebSocketResponse()
         await ws.prepare(request)

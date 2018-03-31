@@ -46,7 +46,7 @@ class WebsocketTest(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_send_websocket_send_recieves(self):
-        async with self.client.sessionelfws_connect(self.ws()) as ws1:
+        async with self.client.session.ws_connect(self.ws()) as ws1:
             async with self.client.session.ws_connect(self.ws(2)) as ws2:
                 await ws1.send_json(self.example_data)
                 recieved = await ws2.receive_json(timeout=5)

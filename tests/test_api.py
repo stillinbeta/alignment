@@ -7,11 +7,12 @@ from aiohttp import web
 
 from alignment.api import APIHandler
 from alignment.redis import RedisPool
+from redis_util import cleanup_redis_ns
 
 
 class APITest(AioHTTPTestCase):
     async def get_application(self):
-        self.prefix = 'test_room_'
+        self.prefix = 'test_room:'
 
         app = web.Application()
         redis = RedisPool(redis_url='redis://localhost')
@@ -21,13 +22,7 @@ class APITest(AioHTTPTestCase):
         return app
 
     async def tearDownAsync(self):
-        redis = await aioredis.create_redis('redis://localhost')
-        try:
-            async for key in redis.iscan(match=self.prefix + '*'):
-                await redis.delete(key)
-        finally:
-            redis.close()
-            await redis.wait_closed()
+        await cleanup_redis_ns(self.prefix)
 
     @unittest_run_loop
     async def test_nonexistent_room(self):
@@ -53,7 +48,6 @@ class APITest(AioHTTPTestCase):
             'size': 128,
             'positions': []
         })
-
 
 if __name__ == '__main__':
     unittest.main()

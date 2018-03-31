@@ -1,10 +1,14 @@
 import json
 import uuid
+import time
 
 from aiohttp import web
 import asyncio
+from structlog import get_logger
 
 from alignment.redis import REDIS_POOL_KEY
+
+log = get_logger()
 
 
 class APIHandler:
@@ -42,16 +46,17 @@ class APIHandler:
             channel, *_ = await redis.subscribe(self.pubsub_key)
             async for msg in channel.iter(
                     encoding='utf-8', decoder=json.loads):
-                userid = msg.get('userID', None)
-                room = msg.get('room', None)
+                userid = msg.get('user', {}).get('id')
+                room = msg.pop('room', None)
+                msg.pop('sid') # not needed for persistence
                 if userid is None or room is None:
                     log.error(
-                        "message missing sid or room",
-                        userid=userid,
+                        "message missing userid or room",
+                        user_id=user_id,
                         room=room)
                     continue
 
-                app[REDIS_POOL_KEY].hset('h_pool_key')
+                await self._set_position(app, room, userid, msg)
 
         except asyncio.CancelledError:
             pass
@@ -67,27 +72,41 @@ class APIHandler:
     def _get_position_sort_key(self, room):
         return self.room_persist_prefix + ':position:sort:' + room
 
-    def _set_position(self, app, room, userid, position):
-        pass
-        # app[REDIS_POOL_KEY].hset(self.get_room_key(room), userid, position)
+    async def _set_position(self, app, room, userid, msg):
+        encoded = json.dumps(msg)
+        await app[REDIS_POOL_KEY].hset(
+            self._get_position_key(room), userid, encoded)
+        await app[REDIS_POOL_KEY].zadd(
+            self._get_position_sort_key(room),
+            time.clock_gettime(time.CLOCK_MONOTONIC_RAW), userid)
+
+    async def _get_positions(self, redis, room):
+        users = await redis.hgetall(self._get_position_key(room), encoding='utf-8')
+        positions = await redis.zrangebyscore(self._get_position_sort_key(room), encoding='utf-8')
+        for position in positions:
+            if position in users:
+                yield json.loads(users[position])
 
     async def get(self, request):
-        key = self._get_room_meta_key(request.match_info['room'])
-        exists = await request.app[REDIS_POOL_KEY].exists(key)
+        room = request.match_info['room']
+        meta_key = self._get_room_meta_key(room)
+        exists = await request.app[REDIS_POOL_KEY].exists(meta_key)
         if not exists:
             raise web.HTTPNotFound
 
         image, size = await request.app[REDIS_POOL_KEY].hmget(
-            key,
+            meta_key,
             'image',
             'size',
             encoding='utf-8',
         )
 
+        positions = [pos async for pos in self._get_positions(request.app[REDIS_POOL_KEY], room)]
+
         return web.json_response({
             'image': image,
             'size': int(size),
-            'positions': [],
+            'positions': list(positions),
         })
 
     async def create(self, request):

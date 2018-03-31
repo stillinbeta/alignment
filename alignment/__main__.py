@@ -21,7 +21,7 @@ PORT = int(os.environ.get('PORT', 5000))
 REDIS_POOL_MIN = int(os.environ.get('REDIS_POOL_MIN', 5))
 REDIS_POOL_MAX = int(os.environ.get('REDIS_POOL_MAX', 10))
 
-if __name__ == '__main__':
+def run():
     discord_user = DiscordUserHandler(
         cookie_secret=COOKIE_SECRET,
         oauth_client_id=OAUTH_CLIENT_ID,
@@ -44,3 +44,5 @@ if __name__ == '__main__':
 
     log.info('starting app', port=PORT)
     web.run_app(app, host='0.0.0.0', port=PORT)
+
+run()
