@@ -69,14 +69,14 @@ class IntegrationTest(AioHTTPTestCase):
             '/api/v1/room/', json={'image': 'https://http.cat/201'})
         # TODO(EKF): this should just return 202 with the room parameter
         self.assertEqual(resp.status, 200)
-        room = resp.url.path.split('/')[-1]
+        body = await resp.json()
         url = self.client.make_url(self.app.router['ws'].url_for()).with_query(
-            sid=1, room=room)
+            sid=1, room=body['room'])
         async with self.client.session.ws_connect(url) as ws:
             for user in self.position_data:
                 await ws.send_json(user)
-        resp2 = await self.client.get(resp.url.path)
-        self.assertEqual(resp.status, 200)
+        resp2 = await self.client.get(body['api_url'])
+        self.assertEqual(resp2.status, 200)
         decoded = await resp2.json()
         self.assertEqual(
             decoded, {
