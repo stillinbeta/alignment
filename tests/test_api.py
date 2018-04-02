@@ -38,11 +38,14 @@ class APITest(AioHTTPTestCase):
     async def test_create_get_room(self):
         resp = await self.client.post(
             '/api/v1/room/', json={'image': 'https://http.cat/201'})
-        self.assertEqual(len(resp.history), 1)
-        self.assertEqual(resp.history[0].status, 303)
-
         self.assertEqual(resp.status, 200)
-        body = await resp.json()
+        redirect = await resp.json()
+        self.assertIn('room', redirect)
+        self.assertIn('api_url', redirect)
+
+        resp2 = await self.client.get(redirect['api_url'])
+        self.assertEqual(resp2.status, 200)
+        body = await resp2.json()
         self.assertEqual(body, {
             'image': 'https://http.cat/201',
             'size': 128,

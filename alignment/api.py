@@ -7,12 +7,12 @@ import asyncio
 from structlog import get_logger
 
 from alignment.redis import REDIS_POOL_KEY
+from alignment.room import RoomStore
 
 log = get_logger()
 
 
 class APIHandler:
-    DEFAULT_SIZE = 128
     PERSIST_KEY = 'persist_task'
 
     def __init__(self,
@@ -23,9 +23,12 @@ class APIHandler:
 
     def setup(self, app):
         app.on_startup.append(self.start_persist_position)
+        # app.on_startup.append(self.setup_default_room)
         app.on_shutdown.append(self.end_persist_position)
 
-        app.router.add_get('/api/v1/room/{room}', self.get, name='room')
+        self.room_store = RoomStore(app, self.room_persist_prefix)
+
+        app.router.add_get('/api/v1/room/{room}', self.get, name='room_api')
         app.router.add_post('/api/v1/room/', self.create)
 
     async def start_persist_position(self, app):
@@ -41,73 +44,35 @@ class APIHandler:
         When they're received, fan them out to all websockets in that room except the websocket that
         the message originated from (identified by SID)
         """
-        redis = await app[REDIS_POOL_KEY]
+        redis = app[REDIS_POOL_KEY]
         try:
             channel, *_ = await redis.subscribe(self.pubsub_key)
             async for msg in channel.iter(
                     encoding='utf-8', decoder=json.loads):
-                userid = msg.get('user', {}).get('id')
                 room = msg.pop('room', None)
-                msg.pop('sid') # not needed for persistence
-                if userid is None or room is None:
-                    log.error(
-                        "message missing userid or room",
-                        user_id=user_id,
-                        room=room)
+                if room is None:
+                    log.error("message missing userid or room",)
                     continue
 
-                await self._set_position(app, room, userid, msg)
+                user = msg.get('user')
+                position = msg.get('position')
+                msg.pop('sid') # not needed for persistence
+                if user is not None and room is not None:
+                    await self.room_store.set_position(room, user, position)
 
         except asyncio.CancelledError:
             pass
         finally:
             await redis.unsubscribe(self.pubsub_key)
 
-    def _get_room_meta_key(self, room):
-        return self.room_persist_prefix + ':meta:' + room
-
-    def _get_position_key(self, room):
-        return self.room_persist_prefix + ':position:' + room
-
-    def _get_position_sort_key(self, room):
-        return self.room_persist_prefix + ':position:sort:' + room
-
-    async def _set_position(self, app, room, userid, msg):
-        encoded = json.dumps(msg)
-        await app[REDIS_POOL_KEY].hset(
-            self._get_position_key(room), userid, encoded)
-        await app[REDIS_POOL_KEY].zadd(
-            self._get_position_sort_key(room),
-            time.clock_gettime(time.CLOCK_MONOTONIC_RAW), userid)
-
-    async def _get_positions(self, redis, room):
-        users = await redis.hgetall(self._get_position_key(room), encoding='utf-8')
-        positions = await redis.zrangebyscore(self._get_position_sort_key(room), encoding='utf-8')
-        for position in positions:
-            if position in users:
-                yield json.loads(users[position])
 
     async def get(self, request):
-        room = request.match_info['room']
-        meta_key = self._get_room_meta_key(room)
-        exists = await request.app[REDIS_POOL_KEY].exists(meta_key)
-        if not exists:
+        name = request.match_info['room']
+        room = await self.room_store.get_room(name)
+        if room is None:
             raise web.HTTPNotFound
 
-        image, size = await request.app[REDIS_POOL_KEY].hmget(
-            meta_key,
-            'image',
-            'size',
-            encoding='utf-8',
-        )
-
-        positions = [pos async for pos in self._get_positions(request.app[REDIS_POOL_KEY], room)]
-
-        return web.json_response({
-            'image': image,
-            'size': int(size),
-            'positions': list(positions),
-        })
+        return web.json_response(room)
 
     async def create(self, request):
         body = await request.json()
@@ -115,7 +80,15 @@ class APIHandler:
         if image is None:
             raise web.HTTPBadRequest(text='missing image parameter')
         room = str(uuid.uuid4())
-        key = self._get_room_meta_key(room)
-        await request.app[REDIS_POOL_KEY].hmset_dict(
-            key, image=image, size=self.DEFAULT_SIZE)
-        raise web.HTTPSeeOther(request.app.router['room'].url_for(room=room))
+        await self.room_store.create_room(room, image)
+
+        resp = {
+            'room': room,
+            'api_url': str(request.app.router['room_api'].url_for(room=room))
+        }
+
+        room_app = request.app.router.get('app')
+        if room_app is not None:
+            resp['app_url'] = str(room_app.url_for(room=room).with_fragment(room))
+
+        return web.json_response(resp)
